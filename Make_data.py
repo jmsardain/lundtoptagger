@@ -31,9 +31,17 @@ def main():
 
     config_signal = load_yaml(config["signal_config_file"])
     signal = config["signal"]
+    jet_label_branch = config["jet_label_branch"]
+    jet_label_target = config_signal[signal]["signal_jet_label"]  # List of integers
 
     # Get some configuration parameters
-    path_to_files = config["path_to_rootfiles"]
+
+    # Get the rootfile path
+    rootfiles_placeholder_vals = dict(
+        ntuple_tag = config["ntuple_tag"],
+        jet_class = config["jet_class"],
+    )
+    path_to_files = config["path_to_rootfiles"].format(**rootfiles_placeholder_vals)
     files = glob.glob(path_to_files)[:config["n_files"]]
 
     intreename = "AnalysisTree"
@@ -42,6 +50,7 @@ def main():
     print(f"Processing {n_files} files")
 
     event_fractions = []
+    event_factor = config["event_factor"] # Use factor less than 1 to reduce the number of total events
     for frac, n_chunks in config["event_fractions"].items():
         event_fractions.extend([frac] * n_chunks)
     if sum(event_fractions) > 1.0 + 1e-8:
@@ -67,11 +76,14 @@ def main():
         "fjet_eta":            "LRJ_eta",
         "fjet_phi":            "LRJ_phi",
         "fjet_truth_label":    "LRJ_truthLabel",
+        "fjet_nProng_labels":  "LRJ_nprong", # Four-Prong labels
+        "fjet_nQuark_labels":  "LRJ_CapturedQuarkCount",
         "fjet_Nconst_Charged": "LRJ_Nconst_Charged", # LRJ_Ntrk500, LRJ_Nconst?
         "GN2X_pqcd":           "GN2Xv01_pqcd",
         "GN2X_phbb":           "GN2Xv01_phbb",
         "GN2X_ptop":           "GN2Xv01_ptop",
         "GN2X_phcc":           "GN2Xv01_phcc",
+        "fjet_tau42_wta":      "Tau42_wta", # Four-prong cut-based discriminant
     }
     # TODO: change this to just use the same names in the output file (requires modifying plotting code as well)
     
@@ -90,7 +102,7 @@ def main():
 
     # Calculate flat-pT weights, apply jet selection and kT cuts, and construct the graphs
     for frac_idx in event_fraction_indices:
-        event_fraction = event_fractions[frac_idx]
+        event_fraction = event_fractions[frac_idx] * event_factor
         print(f"\nProcessing event fraction {event_fraction} ({frac_idx}/{len(event_fractions)})")
         dataset = []
         primary_Lund_only_one_arr = []
@@ -152,7 +164,7 @@ def main():
                 dataset = create_train_dataset_fulld_new_Ntrk_pt_weight_file(
                     dataset,
                     *itemgetter("jetLundZ", "jetLundKt", "jetLundDeltaR", "jetLundIDParent1", "jetLundIDParent2")(jet_properties),
-                    *itemgetter("LRJ_truthLabel", "EventInfo_mcChannelNumber", "LRJ_Nconst_Charged", "LRJ_pt", "LRJ_mass", "LRJ_eta")(jet_properties),
+                    *itemgetter(jet_label_branch, "EventInfo_mcChannelNumber", "LRJ_Nconst_Charged", "LRJ_pt", "LRJ_mass", "LRJ_eta")(jet_properties),
                     weights = {fjet_weight_pt_branch: jet_properties[fjet_weight_pt_branch] for fjet_weight_pt_branch in fjet_weight_pt_branches},
                     GN2X_scores={
                         key: jet_properties[jet_property_names[key]]
@@ -161,7 +173,7 @@ def main():
                     kT_selection=config["kT_cut"],
                     primary_Lund_only_one_arr=primary_Lund_only_one_arr,
                     passed_selection=passed_selection,
-                    signal_jet_truth_labels=set().union(*[config_signal[s]["signal_jet_truth_labels"] for s in signals]),
+                    signal_jet_truth_labels=set().union(*[config_signal[s]["signal_jet_label"] for s in signals]),
                     signal_dsids=set().union(*[config_signal[s]["dsids"] for s in signals]),
                     pt_range=(
                         min(min(config_signal[s]["pt_range"]) for s in signals),
@@ -174,6 +186,7 @@ def main():
                     eta_max=max(config_signal[s]["eta_max"] for s in signals),
                     min_splits=min(config_signal[s]["min_splits"] for s in signals),
                     include_pt=config["include_pt"],
+                    binary_label=config["binary_label"],
                 )
 
                 for jet_property_out, jet_propety_in in jet_property_names.items():
@@ -196,6 +209,8 @@ def main():
 
         # Save graphs and accompanying ROOT files
         filepath_placeholder_vals = dict(
+            signal = config["signal"],
+            jet_class = config["jet_class"],
             id = config["id"],
             kT_cut = config["kT_cut"],
             include_pt = "_with_pt" if config["include_pt"] else "",

@@ -1,0 +1,76 @@
+binary_label: False  # if True, use binary classification (signal=1 vs background=0), if False, use multiclass classification(Dump raw signal_jet_label values)
+
+jet_label_branch: "LRJ_nprong" # LRJ_truthLabel, LRJ_nprong, or LRJ_CapturedQuarkCount
+
+classification_mode: 'MultiClass' # Binary or MultiClass
+multi_class_N: 4
+
+# path to the configuration file for the signal sample, which contains the selection criteria and other parameters
+signal_config_file: "/home/jjhong96/FourProngTagger/LundTopTagger/configs_FourProng/config_signal.yaml"
+signal: SS4W_NoHWW # SS4W, HHbbWW, HSbbWW, QCD, WZ, TTbar; flag to choose one of the configurations from the signal_config_file
+# Per mass point signal types are also defined: HHbbWW4TeV, HHbbWW6TeV, HSbbWW2TeV, HSbbWW3TeV, HSbbWW4TeV
+
+mass_windows:
+  # - [40, 150] # Targetting HH4W
+  # - [150, 250] 
+  # - [250, 350]
+  # - [350, 450]
+  # - [450, 550]
+  # - [550, 800]
+  - [40, 800] # All FourProng signal mass range
+
+ntuple_tag: 'FourProngV1'
+jet_class: 'SS4W_Train' # jet_classes: QCD_Train  SS4W_Train  SS4W_Val  TTbar_Train  WZ_Train HHbbWW_Val_mc23d HSbbWW_Val_mc23d TTbar_Val WZ_Val QCD_Val
+# jet_class: 'S300WW_Train' # jet_classes: Single mass point signal, HWW_Train or S300WW_Train
+# jet_class: 'HHbbWW4TeV_Val_mc23d' # jet_classes: HHbbWW4TeV_Val_mc23d HHbbWW6TeV_Val_mc23d HSbbWW2TeV_Val_mc23d HSbbWW3TeV_Val_mc23d HSbbWW4TeV_Val_mc23d
+
+path_to_rootfiles: '/data/jjhong96/LundNet_Ntuple/{ntuple_tag}/{jet_class}/*/*.root'
+# path_to_rootfiles: '/data/jjhong96/LundNet_Ntuple/FourProngV1/SS4W_Train/user.jjhong.mc23_13p6TeV.560083.e8590_s4369_r16083_p6808.FourProngV1_ANALYSIS.root/*.root' # 190k HWW* Jets
+# path_to_rootfiles: '/data/jjhong96/LundNet_Ntuple/FourProngV1/SS4W_Train/user.jjhong.mc23_13p6TeV.560089.e8590_s4369_r16083_p6808.FourProngV1_ANALYSIS.root/*.root' # 370k S300WW Jets
+
+n_files: null      # choose a small number of files in case you don't want to process all files; otherwise set to null
+event_fractions: {0.05: 2, 0.1: 9}  # dict of fractions to process sequentially; these will be saved in separate files
+# event_fractions: {0.2: 5}  # For validation graphs
+# event_fractions: {1.0: 1}  # For validation graphs
+# e.g. {0.01: 2, 0.02: 1, ...} - the processing and output files will be divided in 2 chunks of 1% of the events, then 1 chunk of 2% and so on
+# to process all events at once, set to {1.0: 1}
+# if the fraction is too large, torch.save will fail, e.g. for the JZ4 QCD sample, processing 10% of events at once fails
+
+event_fraction_idx: null  # index of the event_fraction to process (after the dictionary is converted to a list) in case you only want to process one of them
+# set to null to process all chunks
+
+event_factor: 1.0  # factor to multiply the event_fraction by; e.g. if you want to process 10% of events, set to 0.1; if you want to process 50% of events, set to 0.5
+# event_factor: 0.5
+# event_factor: 0.1 # Use only 10% WZ, TTBar samples to keep the jet numbers the same
+# event_factor: 0.08 # Use only 8% of events of the TTBar, WZ samples to keep the jet numbers the same
+# event_factor: 0.05 # Use only 5% of events of the QCD samples to keep the jet numbers the same
+
+
+# The output directory and file name can contain some placeholders inside curly brackets.
+# They will be replaced by the corresponding values:
+# {id} -> value of id specified below
+# {kT_cut} -> value of kT_cut (None if kT_cut is null)
+# {include_pt} -> "_with_pt" if include_pt is True, "" if include_pt is False
+# {frac} -> f"_part{frac_idx}_{event_fraction*100}_percent" if event_fraction < 1.0 else ""; frac_idx is the index of the event_fraction in the list
+# out_dir: "/home/ravinascos/LundNet/Jad_git/lundtoptagger/Models/"
+
+
+id: "FourProngV1_MultiClassTrain"    # your own identifier for the dataset, used in the output file names
+out_dir: "/data/jjhong96/LundNet_Graph/{id}/"
+
+# out_dir: "/data/jjhong96/LundNet_Graph/FourProngV1_Valid/mass_40_800/"
+
+out_file_name_graphs: "graphs_{signal}_{jet_class}_{frac}_ln_kT_cut_{kT_cut}{include_pt}"
+out_file_name_root: "data_{signal}_{jet_class}_{frac}_ln_kT_cut_{kT_cut}.root"
+# the ROOT file will store mass, pT, mcEventWeight, dsids, truth labels and the flat-pT weights of the jets passing the selection
+
+# can also be set to "all" to calculate multiple flat-pt weights will be calculated for the background jets,
+# one for each signal configuration (top, W);
+# each one will be saved in a branch/attribute named "fjet_weight_pt_{signal}" in the output ROOT/graphs file
+signal_name_in_weight: False  # if True, the flat-pT weight will be saved in a branch/attribute named "fjet_weight_pt_{signal}" in the output ROOT/graphs file
+# automatically set to True if if signal is set to "all"
+# you can also set it to true even if using only one signal type to have a matching branch/attribute name
+
+# selection and output variables to include as graph attributes
+kT_cut: null           # actually a cut in ln(kT), set to null to not apply any cut
+include_pt: True       # choose whether to include jet pT as an attribute of the graphs - this is needed for training with the adversarial network and can be useful for evaluation

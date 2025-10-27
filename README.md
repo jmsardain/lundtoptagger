@@ -181,3 +181,39 @@ python -b plotting.py
 - [ ] Make the LundJetPlane plot with the prediction to see where the modeling uncertainties impact the most
 - [ ] Apply a shift of 5% to mean pT of the constituent, and test on that sample
 - [ ] Apply a shift of 5% to resolution pT of the constituent, and test on that sample
+
+# LundNet MultiClass
+This section is to describe the multi-class workflow. Currently, `LundNet4Class` is a copy of `LundNet`, but with four output nodes. `log_softmax()` activation has been used as the final activation function. Many dedicated utility functions are written in `utils_multiclass.py`
+## Data Preparation
+
+Uses the same `Make_data.py` script. Graph making function `create_train_dataset_fulld_new_Ntrk_pt_weight_file` has been modified to return custom jet labels. See `configs_FourProng/config_make_data.yaml` as an example. User can specify the label branch name other than the truth label.
+```shell
+python3 Make_data.py configs_FourProng/config_make_data.yaml
+```
+### Data Shuffling
+
+For the multi-class training, we expect large datasets. Some computing clusters may not have job nodes with large memory capacity, thus lazy dataset loading has been implemented. See `Iterative Dataset` below. It uses `pandas.df` to map jets between the root files and the graph files.
+
+- Jet weighting: It first loads all the root files to fill the pt, mass, and pt-mass histograms. Then a flattening is applied creating weight per bin
+- Class balancing: Sum of all jet's weight per class may be imbalanced. Scale factor is applied to the other classes w.r.t. reference class
+- Save dataset: Shuffled datasets are saved, see `save_split()` function.
+
+Caveat: Weight calculation uses all jets in the root files, while the balancing uses only the selected number of jets.
+
+During training, this means torch will all graph files per epoch, making the training time longer while minimizing the RAM usage(e.g. UChicagoAF)
+
+```shell
+python3 Shuffle_data.py configs_FourProng/config_shuffle_data.yaml
+```
+## Training
+See `Train_MultiClass.py`. It's a training macro based on `weight_ONLY_TRAINS.py`
+
+```shell
+python3 Train_MultiClass.py configs_FourProng/config_Train_MultiClass.yaml
+```
+
+## Testing
+`Make_Score_MultiClass.py` writes the `LundNet4Class` model score to the .root files created from `Make_Data.py`. It can loop through multiple LundNet checkpoints under `path_to_combined_ckpt`. Now a user can use the score distribution to assess the `LundNet4Class` performance.
+```shell
+python3 Make_Score_MultiClass.py configs_FourProng/config_make_scores_MultiClass.yaml
+```

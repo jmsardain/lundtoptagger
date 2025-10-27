@@ -33,8 +33,7 @@ def GetPtWeight(pts, truth_labels, dsid_input: int, signal_config: dict, SF: flo
     filenames_bkg = signal_config["pt_hist_files_bkg"]["files"]
     histos_dir = signal_config["pt_hist_files_bkg"]["dir_path"]
 
-    filename_Phythia = os.path.join(histos_dir, "qcdP8.root")  # default file for background jets if no match found
-    filename_bkg = filename_Phythia
+    filename_Phythia = os.path.join(histos_dir, "mass_40-300_pt_200-3100/qcdP8.root")  # default file for background jets if no match found
 
     if dsid_input in signal_config["pt_hist_files_signal"]:
         filename_sig = signal_config["pt_hist_files_signal"][dsid_input]
@@ -53,7 +52,12 @@ def GetPtWeight(pts, truth_labels, dsid_input: int, signal_config: dict, SF: flo
                 found_background_file = True
                 break
         if not found_background_file:
+            filename_bkg = filename_Phythia
             print(f"WARNING: No background histogram file found for DSID {dsid_input} for given signal configuration.")
+    else:
+        tmp_filename_list = list(filenames_bkg.keys())
+        print('list(filenames_bkg.keys()):', tmp_filename_list)
+        filename_bkg = os.path.join(histos_dir, tmp_filename_list[0])
 
     print("Using signal file:", filename_sig)
     print("Using background file:", filename_bkg)
@@ -221,6 +225,7 @@ def create_train_dataset_fulld_new_Ntrk_pt_weight_file(
     eta_max: float = 2.0,
     min_splits: int = 3,
     include_pt: bool = False,
+    binary_label: bool = False,
 ) -> list[Data]:
     """
     Create a list of graphs for tagging.
@@ -250,6 +255,7 @@ def create_train_dataset_fulld_new_Ntrk_pt_weight_file(
         eta_max (float): Maximum absolute value of jet pseudorapidity, for selected jets.
         min_splits (int): Minimum number of splittings, or emissions, for a jet to be selected.
         include_pt (bool): Whether to include pT as a graph attribute.
+        binary_label (bool): Whether to use binary labels (1 for signal, 0 for background) instead of original labels.
 
     Returns:
         list[Data]: List of torch_geometric.data.Data objects.
@@ -283,12 +289,14 @@ def create_train_dataset_fulld_new_Ntrk_pt_weight_file(
         else:
             passed_selection.append(True)  # changed to False later for some conditions
 
+        if binary_label:
         # label signal as 1 and background as 0
-        label_out = label[i] # label_np
-        if label[i] == 10:
-            label_out = 0
-        if label[i] in signal_jet_truth_labels:
-            label_out = 1
+            if label[i] == 10:
+                label_out = 0
+            if label[i] in signal_jet_truth_labels:
+                label_out = 1
+        else:
+            label_out = label[i] # Dump the raw labels
 
         # convert LJP variables to appropriate format
         z_out = ak.to_numpy(z[i])

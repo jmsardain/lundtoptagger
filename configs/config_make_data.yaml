@@ -1,3 +1,6 @@
+binary_label: true  # if true, use binary classification (signal=1 vs background=0), if false, use multiclass classification(Dump raw signal_jet_label values)
+jet_label_branch: 'LRJ_nprong' # LRJ_truthLabel, LRJ_nprong, or LRJ_CapturedQuarkCount
+
 # NOTE: it is assumed all data in a single file has the same DSID
 #path_to_rootfiles: "/data/ravinascos/Lund_Plane_2024_graphs/TRAIN_DUMMY_01QCD_05Z/*.root" #TRAIN_DUMMY_fewEvents # TRAIN_DUMMY_01QCD_05Z
 path_to_rootfiles: '/data/ravinascos/Lund_Plane_2024_graphs/TRAIN_DUMMY_02QCD_1Z/*.root'

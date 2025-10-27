@@ -1,0 +1,33 @@
+# Data and output paths
+# =====================
+data:
+  path_to_trainfiles: "/data/jjhong96/LundNet_Graph/FourProngV1_MultiClassTrain/Shuffled_Graphs_NoHWW_flat_pt/train/"  # can also be a list of paths
+  path_to_validationfiles: "/data/jjhong96/LundNet_Graph/FourProngV1_MultiClassTrain/Shuffled_Graphs_NoHWW_flat_pt/test/"  # can also be a list of paths
+  path_to_save: "/data/jjhong96/LundNet_Model/MultiClass_NoHWW_Ver1/"
+  model_name: "LundNet_R22_FourClass_NoHWW_FlatPt_Ver1"
+
+# Preprocessing is done in Shuffle_data.py
+
+# Architecture and training
+# =========================
+architecture:
+  # batch_size: 4500 #2600
+  batch_size: 1024
+  test_size: 0.1
+  learning_rate: 7.0e-6
+  save_every_epoch: True
+
+  # classifier
+  n_epochs: 80
+  choose_model: LundNet4Class # LundNet, LundNet_plus_GN2X, GATNet, GINNet, EdgeGinNet, PNANet
+  # if you want to use LundNet_plus_GN2X, make sure that the graphs have GN2X scores!
+
+# Computing resources
+# ===================
+
+# choose gpu to run on
+gpu: null # can be null or integer
+# if null, code will check if CUDA is available and use torch.device("cuda") if it is, otherwise torch.device("cpu")
+# Usually gpu 4 worked best, it had the most memory available (on UChicago?)
+
+num_workers: 4  # number of workers for the DataLoader, can be set to 0 if you want to use the main thread

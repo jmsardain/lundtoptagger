@@ -80,6 +80,50 @@ class Net(torch.nn.Module):
 #         #print(x.shape)
 #         return F.sigmoid(x)
 
+class LundNet4Class(torch.nn.Module):
+    def __init__(self):
+        super(LundNet4Class, self).__init__()
+        self.conv1 = EdgeConv(nn.Sequential(nn.Linear(6, 32), nn.BatchNorm1d(num_features=32), nn.ReLU(),
+                                            nn.Linear(32, 32), nn.BatchNorm1d(num_features=32), nn.ReLU()),aggr='add')
+        self.conv2 = EdgeConv(nn.Sequential(nn.Linear(64, 32), nn.BatchNorm1d(num_features=32), nn.ReLU(),
+                                            nn.Linear(32, 32), nn.BatchNorm1d(num_features=32), nn.ReLU()),aggr='add')
+        self.conv3 = EdgeConv(nn.Sequential(nn.Linear(64,64), nn.BatchNorm1d(num_features=64), nn.ReLU(),
+                                            nn.Linear(64, 64), nn.BatchNorm1d(num_features=64), nn.ReLU()),aggr='add')
+        self.conv4 = EdgeConv(nn.Sequential(nn.Linear(128, 64), nn.BatchNorm1d(num_features=64), nn.ReLU(),
+                                            nn.Linear(64, 64), nn.BatchNorm1d(num_features=64), nn.ReLU()),aggr='add')
+        self.conv5 = EdgeConv(nn.Sequential(nn.Linear(128, 128), nn.BatchNorm1d(num_features=128), nn.ReLU(),
+                                            nn.Linear(128, 128), nn.BatchNorm1d(num_features=128), nn.ReLU()),aggr='add')
+        self.conv6 = EdgeConv(nn.Sequential(nn.Linear(256, 128), nn.BatchNorm1d(num_features=128), nn.ReLU(),
+                                            nn.Linear(128, 128), nn.BatchNorm1d(num_features=128), nn.ReLU()),aggr='add')
+
+        self.seq1 = nn.Sequential(nn.Linear(448, 384),
+                                nn.BatchNorm1d(num_features=384),
+                                nn.ReLU())
+        # self.seq2 = nn.Sequential(nn.Linear(384, 256),
+        #                           nn.ReLU())
+        self.seq2 = nn.Sequential(nn.Linear(385, 256),
+                                  nn.ReLU())
+        self.lin = nn.Linear(256, 4)
+
+    def forward(self, data):
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+        Ntrk = data.Ntrk
+        Ntrk = torch.unsqueeze(Ntrk, 1)
+        x1 = self.conv1(x, edge_index)
+        x2 = self.conv2(x1, edge_index)
+        x3 = self.conv3(x2, edge_index)
+        x4 = self.conv4(x3, edge_index)
+        x5 = self.conv5(x4, edge_index)
+        x6 = self.conv6(x5, edge_index)
+        x = torch.cat((x1, x2, x3, x4, x5, x6), dim=1)
+        x = self.seq1(x)
+        x = global_mean_pool(x, batch)
+        x = torch.cat( (x, Ntrk) ,dim=1)
+        x = self.seq2(x)
+        x = F.dropout(x, p=0.1)
+        x = self.lin(x)
+        return F.log_softmax(x, dim=1) # For multiclass classification
+        # return x # Return length 4 output vector for use with nn.CrossEntropyLoss()
 
 
 class LundNet(torch.nn.Module):
