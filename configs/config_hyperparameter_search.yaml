@@ -1,0 +1,96 @@
+# Data and output paths
+# =====================
+data:
+  # path_to_trainfiles: "/data/ravinascos/LundNet/2024_graphs/graphs_NewDataset_LundNet_R22_No_ln_kT_Cut_LRJ_NewData_Primary"
+  path_to_trainfiles: "./data_train/graphs_*0.50percent*{ln_kT_cut}_*"  # can also be a list of paths
+  path_to_save: "../Models/"
+  # model_name: "LundNet_R22_ExtraNode_No_ln_kT_Cut_LRJ_NewData_Primary"
+  model_name: "LundNet_R22_test"
+  adv_model_name: "adversarial"
+  ln_kT_cut: null # null, -0.5, 0.0, 0.5, 1.0, 2.0, 2.8
+  # if {ln_kT_cut} is present in path_to_trainfiles, path_to_save or model_name, it will be replaced by the value of ln_kT_cut (by None if ln_kT_cut is null)
+  # so it is only used to select a dataset with a specific ln_kT cut already applied, the training script does not apply the ln_kT cut itself
+  # the value from this config file and can be overridden by the command-line argument --ln_kT_cut
+
+# Preprocessing
+# =============
+cut_pt_mass: True
+# If True, applies mass and pT cuts specified in the signal config file,
+# the path to which is specified in config_signal_path below.
+# This saves you from having to prepare graph files with the cuts already applied.
+# However, if you have already prepared graph files with the cuts applied,
+# then this will only waste time and should be set to False.
+config_signal_path: "./configs/config_signal.yaml"  # path to the config file with the signal configuration
+signal: top                                         # top or W; flag to choose one of the configurations from the signal_config_file
+
+flatten_pt: True
+# if applying cuts which were not used for the pT spectrum that was used for reweighting in Make_data.py,
+# then flatten_pt should be set to True, so that the pT spectrum is flattened again
+flatten_mass: False  # should only be used with a wide-mass sample, which has a significant number of jets across the entire mass range used for training
+num_iters: 4         # number of iterations for the iterative reweighting procedure
+# number of mass and pT bins for the iterative reweighting procedure
+# (the reweighting is done so that the total weight in each bin is the same)
+n_bins_pt:   100
+n_bins_mass: 50
+# bins are only used for 1D reweighting, so the number of bins does not matter for the 2D reweighting
+
+# Architecture and training
+# =========================
+architecture:
+  batch_size: 4500 #2600
+  test_size: 0.1
+  learning_rate: 0.0004
+  save_every_epoch: True
+
+  # classifier
+  n_epochs: 35
+  choose_model: LundNet # LundNet, LundNet_plus_GN2X, GATNet, GINNet, EdgeGinNet, PNANet
+  # if you want to use LundNet_plus_GN2X, make sure that the graphs have GN2X scores!
+
+  # adversarial
+  num_gaussians: 20
+  n_epochs_adv: 20
+
+  # combined
+  do_combined_training: False  # can be overridden by command line argument
+  lambda_parameter: 25
+  loss_parameter: 1
+  loss_weights: [1,1]
+  n_epochs_common: 200
+
+
+retrain:
+  flag: False
+  path_to_ckpt: "/sps/atlas/k/khandoga/TrainGNN/Models/LundNet_ufob_e012_0.12481.pt"
+
+##### Hyperparameter search
+## lr_part parameter removes loop over lr_rates and select only one value.
+## If you have 3 posible lr values, then you can open 3 different instances of the script (lr_part=1,2,3) and do the grid search 3 times faster.
+## I think n_step = 3 or 4 is a good limit to stop the hyperparameter searching
+## Script automatically search the best hyperparameters values for previous step, just be careful not to change path_to_save where all ckpts are saved.
+hyperparameter:
+  SA_METHOD: True ## False should be Optuna implementation, but that option is not ready yet.
+  n_step: 2 ## must be an integer equal to or greater than 1
+  lr_part: 3  ## select 0 if you want to take all lr values in the loop
+  lr_ini: 0.00035
+  R_lr_ini: 0.0002
+  n_lr: 3
+  lim_range_ini: 4
+  R_lim_range_ini: 1.5
+  n_lim_range: 3
+  batch_ini: 2500
+  R_batch_ini: 1200
+  n_batch: 4
+  exp_lr: 2.5
+  exp_lim_range: 1.5 ## only 2 first grid search will include variation in lim_range variable 
+  exp_batch: 2
+
+# Computing resources
+# ===================
+
+# choose gpu to run on
+gpu: null # can be null or integer
+# if null, code will check if CUDA is available and use torch.device("cuda") if it is, otherwise torch.device("cpu")
+# Usually gpu 4 worked best, it had the most memory available (on UChicago?)
+
+num_workers: 4  # number of workers for the DataLoader, can be set to 0 if you want to use the main thread

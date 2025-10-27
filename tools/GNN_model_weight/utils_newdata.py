@@ -1047,3 +1047,36 @@ def JSD (P, Q, base=2):
     m = 0.5 * (p + q)
     return 0.5 * (entropy(p, m, base=base) + entropy(q, m, base=base))
 
+def train_clas_2(loader, model, device, optimizer1, optimizer2, optimizer3, epoch, lim):
+    #print ("dataset size:",len(loader.dataset))
+    model.train()
+    loss_all = 0
+    batch_counter = 0
+    for data in loader:
+        batch_counter+=1
+        #print("batch_counter: ",batch_counter, end="\r")
+        if len(data)<512:
+            continue
+        data = data.to(device)
+        optimizer1.zero_grad()
+        optimizer2.zero_grad()
+        optimizer3.zero_grad()
+
+        output = model(data)
+        new_y = torch.reshape(data.y, (int(list(data.y.shape)[0]),1))
+        new_w = torch.reshape(data.weights, (int(list(data.weights.shape)[0]),1)) ## add weights
+
+        loss = F.binary_cross_entropy(output, new_y, weight = new_w)
+        loss.backward()
+        loss_all += data.num_graphs * loss.item()
+
+        if epoch < lim:
+            optimizer3.step()
+        elif epoch < 2*lim:
+            optimizer2.step()
+        else:
+            optimizer1.step()
+    del data
+    data = []
+    torch.cuda.empty_cache()
+    return loss_all / len(loader.dataset)
